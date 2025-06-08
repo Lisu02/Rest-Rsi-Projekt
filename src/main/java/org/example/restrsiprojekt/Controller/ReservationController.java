@@ -1,16 +1,26 @@
 package org.example.restrsiprojekt.Controller;
 
-
+import com.itextpdf.text.Document;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.pdf.PdfWriter;
 import org.example.restrsiprojekt.Controller.Exception.ReservationNotFoundException;
 import org.example.restrsiprojekt.DAO.*;
-import org.example.restrsiprojekt.model.Movie;
-import org.example.restrsiprojekt.model.Reservation;
-import org.example.restrsiprojekt.model.Showing;
+import org.example.restrsiprojekt.model.*;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import java.awt.*;
+import java.io.ByteArrayOutputStream;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
@@ -87,69 +97,72 @@ public class ReservationController {
                 linkTo(methodOn(ReservationController.class).findAllReservations()).withSelfRel());
 
     }
+    @GetMapping("/pdf/{reservationId}")
+    public ResponseEntity<byte[]> getReservationPDF(@PathVariable Long reservationId) {
+        try {
+            Optional<Reservation> optionalReservation = reservationDao.findById(reservationId);
+            Reservation reservation;
+            if (optionalReservation.isEmpty()) {
+                reservation = new Reservation();
+                Showing showing = new Showing();
+                showing.setShowingId(-1L);
+                showing.setShowingDateAndTime("Jutro");
+                Movie movie = new Movie(
+                        -1L,
+                        "Tytul",
+                        "Rezyser",
+                        "Wczoraj",
+                        "Opis",
+                        MovieType.ACTION,
+                        null
+                );
+                showing.setMovie(movie);
+                reservation.setShowingId(showing.getShowingId());
+                LinkedList<SeatLocation> seatLocations = new LinkedList<SeatLocation>();
+                seatLocations.add(new SeatLocation(0,0));
+                seatLocations.add(new SeatLocation(1,1));
+                reservation.setSeatLocation(seatLocations);
+            }else{
+                reservation = optionalReservation.get();
+            }
 
-//    public DataHandler getReservationPDF(Long reservationId) {
-//        try {
-//            Optional<Reservation> optionalReservation = reservationDao.findById(reservationId);
-//            Reservation reservation;
-//            if (optionalReservation.isEmpty()) {
-//                reservation = new Reservation();
-//                Showing showing = new Showing();
-//                showing.setShowingId(-1L);
-//                showing.setShowingDateAndTime("Jutro");
-//                Movie movie = new Movie(
-//                        -1L,
-//                        "Tytul",
-//                        "Rezyser",
-//                        "Wczoraj",
-//                        "Opis",
-//                        MovieType.ACTION,
-//                        null
-//                );
-//                showing.setMovie(movie);
-//                reservation.setShowingId(showing.getShowingId());
-//                LinkedList<SeatLocation> seatLocations = new LinkedList<SeatLocation>();
-//                seatLocations.add(new SeatLocation(0,0));
-//                seatLocations.add(new SeatLocation(1,1));
-//                reservation.setSeatLocation(seatLocations);
-//            }else{
-//                reservation = optionalReservation.get();
-//            }
-//
-//            Document document = new Document();
-//            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//            PdfWriter.getInstance(document, baos);
-//
-//            document.open();
-//
-//            // Dodanie tytulu
-//            Font titleFont = new Font(Font.FontFamily.HELVETICA, 18, Font.BOLD);
-//            Paragraph title = new Paragraph("Reservation Confirmation", titleFont);
-//            title.setAlignment(Element.ALIGN_CENTER);
-//            title.setSpacingAfter(20);
-//            document.add(title);
-//
-//            Showing showing = showingDao.findById(reservation.getShowingId()).orElseThrow();
-//
-//            // Szczegoly rezerwacji
-//            Font normalFont = new Font(Font.FontFamily.HELVETICA, 12, Font.NORMAL);
-//            document.add(new Paragraph("Reservation ID: " + reservationId, normalFont));
-//            document.add(new Paragraph("Movie title: " + showing.getMovie().getTitle(), normalFont));
-//            document.add(new Paragraph("Showing date: " + showing.getShowingDateAndTime(), normalFont));
-//            document.add(new Paragraph("Reserved seats (in progress): ", normalFont));
-//
-//            document.close();
-//            byte[] pdfBytes = baos.toByteArray();
-//
-//            DataSource dataSource = new ByteArrayDataSource(pdfBytes, "application/pdf");
-//            return new DataHandler(dataSource);
-//
-//
-//            //return baos.toByteArray();
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//    }
+            Document document = new Document();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PdfWriter.getInstance(document, baos);
+
+            document.open();
+
+            // Dodanie tytulu
+            Font titleFont = new Font(Font.FontFamily.HELVETICA, 18, Font.BOLD);
+            Paragraph title = new Paragraph("Reservation Confirmation", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(20);
+            document.add(title);
+
+            Showing showing = showingDao.findById(reservation.getShowingId()).orElseThrow();
+
+            // Szczegoly rezerwacji
+            Font normalFont = new Font(Font.FontFamily.HELVETICA, 12, Font.NORMAL);
+            document.add(new Paragraph("Reservation ID: " + reservationId, normalFont));
+            document.add(new Paragraph("Movie title: " + showing.getMovie().getTitle(), normalFont));
+            document.add(new Paragraph("Showing date: " + showing.getShowingDateAndTime(), normalFont));
+            document.add(new Paragraph("Reserved seats (in progress): ", normalFont));
+
+            document.close();
+            byte[] pdfBytes = baos.toByteArray();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(ContentDisposition.inline().filename("reservation_" + reservationId + ".pdf").build());
+
+            return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+
+
+            //return baos.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 
 }
