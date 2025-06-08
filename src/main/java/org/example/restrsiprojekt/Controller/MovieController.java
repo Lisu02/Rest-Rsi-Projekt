@@ -74,9 +74,11 @@ public class MovieController {
     @PostMapping("/{actorId}/{movieId}")
     public Movie addActorToMovie(@PathVariable Long actorId,@PathVariable Long movieId) {
         if(movieDao.findById(movieId).isPresent()){
-            Movie movie = movieDao.findById(movieId).get();
+            System.out.printf("movie is present");
+            Movie movie = movieDao.findById(movieId).orElseThrow(() -> new MovieNotFoundException(movieId));
             if(actorDao.findById(actorId).isPresent()){
-                movie.getActorList().add(actorId);
+                System.out.printf("actor is present");
+                movie.getActorList().add(actorId); //todo : wyjatek
                 movieDao.update(movie);
                 return movie;
             }
