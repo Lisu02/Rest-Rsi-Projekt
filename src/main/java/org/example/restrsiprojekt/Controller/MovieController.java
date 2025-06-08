@@ -70,21 +70,19 @@ public class MovieController {
                 linkTo(methodOn(MovieController.class).getMovieList()).withSelfRel());
     }
 
-    //Schowane jest addActorToMovie bo musze lepiej wymyslic przekazywanie danych
-    // i schowany jest getImage bo trzeba jakos lepiej zdjecia zwrócić
-
-//    @PostMapping("/{actorId}/{movieId}")
-//    public Movie addActorToMovie(@PathVariable Long actorId,@PathVariable Long movieId) {
-//        if(movieDao.findById(movieId).isPresent()){
-//            Movie movie = movieDao.findById(movieId).get();
-//            if(actorDao.findById(actorId).isPresent()){
-//                movie.getActorList().add(actorId);
-//                movieDao.update(movie);
-//                return movie;
-//            }
-//        }
-//        return null;
-//    }
+    //todo: fix rzuca nullem
+    @PostMapping("/{actorId}/{movieId}")
+    public Movie addActorToMovie(@PathVariable Long actorId,@PathVariable Long movieId) {
+        if(movieDao.findById(movieId).isPresent()){
+            Movie movie = movieDao.findById(movieId).get();
+            if(actorDao.findById(actorId).isPresent()){
+                movie.getActorList().add(actorId);
+                movieDao.update(movie);
+                return movie;
+            }
+        }
+        return null;
+    }
 
     //TODO: naprawic nie dziala
     @GetMapping(value = "/movies/image", produces = MediaType.IMAGE_PNG_VALUE)
