@@ -1,12 +1,19 @@
 package org.example.restrsiprojekt.Controller;
 
 
+import org.example.restrsiprojekt.Controller.Exception.ReservationNotFoundException;
 import org.example.restrsiprojekt.DAO.*;
+import org.example.restrsiprojekt.model.Movie;
 import org.example.restrsiprojekt.model.Reservation;
 import org.example.restrsiprojekt.model.Showing;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController()
 @RequestMapping("/reservation")
@@ -55,12 +62,30 @@ public class ReservationController {
         return reservationDao.findAll();
     }
     @GetMapping("/{id}")
-    public Reservation findReservation(@PathVariable Long id) {
-        return reservationDao.findById(id).orElse(null);
+    public EntityModel<Reservation> findReservation(@PathVariable Long id) {
+        Reservation reservation = reservationDao.findById(id).orElseThrow(() -> new ReservationNotFoundException(id));
+
+        return EntityModel.of(reservation,
+                linkTo(methodOn(ReservationController.class).findReservation(id)).withSelfRel(),
+                linkTo(methodOn(ReservationController.class).findAllReservations()).withRel("all")
+        );
     }
     @GetMapping("/movie/{id}")
-    public List<Reservation> findAllReservationsForMovie(@PathVariable Long id) {
-        return reservationDao.findByMovieId(id);
+    public CollectionModel<EntityModel<Reservation>> findAllReservationsForMovie(@PathVariable Long id) {
+
+
+        List<Reservation> reservationList = reservationDao.findByMovieId(id);
+
+        List<EntityModel<Reservation>> reservations = reservationList.stream()
+                .map(reservation -> EntityModel.of(reservation,
+                                linkTo(methodOn(ReservationController.class).findReservation(reservation.getReservationId())).withSelfRel()
+                        )
+                ).toList();
+
+
+        return CollectionModel.of(reservations,
+                linkTo(methodOn(ReservationController.class).findAllReservations()).withSelfRel());
+
     }
 
 //    public DataHandler getReservationPDF(Long reservationId) {
