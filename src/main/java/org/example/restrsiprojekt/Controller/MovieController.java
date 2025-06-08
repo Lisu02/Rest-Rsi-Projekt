@@ -1,6 +1,7 @@
 package org.example.restrsiprojekt.Controller;
 
 
+import jakarta.websocket.server.PathParam;
 import org.example.restrsiprojekt.Controller.Exception.MovieNotFoundException;
 import org.example.restrsiprojekt.DAO.ActorDao;
 import org.example.restrsiprojekt.DAO.ActorDaoImpl;
@@ -9,8 +10,14 @@ import org.example.restrsiprojekt.DAO.MovieDaoImpl;
 import org.example.restrsiprojekt.model.Movie;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 
@@ -79,25 +86,33 @@ public class MovieController {
 //        return null;
 //    }
 
-//    public DataHandler getImage(@WebParam(name = "filepath") String filepath) {
-//        if(filepath == null){
-//            Logger log = Logger.getLogger(this.getClass().getName());
-//            log.warning("getImage - filepath jest NULL");
-//            return Movie.loadImageOrDefault("");
-//        }
-//        return Movie.loadImageOrDefault(filepath);
-//    }
-//
-//    public DataHandler getMovieImage(@WebParam(name = "movieId") Long movieId) {
-//        Optional<Movie> movieOptional = movieDao.findById(movieId);
-//        if(movieOptional.isPresent()){
-//            String imagePath = movieOptional.get().getImagePath();
-//            return Movie.loadImageOrDefault(imagePath);
-//        }else {
-//            return Movie.loadImageOrDefault("");
-//        }
-//        //throw new RuntimeException("No movie at provided id is present");
-//    }
+    //TODO: naprawic nie dziala
+    @GetMapping(value = "/movies/image", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> getMovieImage(@PathParam(value = "filepath") String filepath) throws IOException {
+        String imagePath = filepath;
+        imagePath = imagePath.substring(1,imagePath.length());
+        Path path = Paths.get(imagePath);
+        byte[] image = Files.readAllBytes(path);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(image);
+    }
+
+    @GetMapping(value = "/movies/{id}/image", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> getMovieImage(@PathVariable Long id) throws IOException {
+        Optional<Movie> movieOptional = movieDao.findById(id);
+        String imagePath = movieOptional.map(Movie::getImage).orElse("shrek.png");
+        imagePath = imagePath.substring(1,imagePath.length());
+        Path path = Paths.get(imagePath);
+        byte[] image = Files.readAllBytes(path);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(image);
+    }
+
+
 
 
 }
